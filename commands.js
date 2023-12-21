@@ -30,6 +30,12 @@ const PRIVACY_REPORTING_COMMAND = {
   type: 3,
 };
 
+const REPORTING_DASHBOARD_COMMAND = {
+    name: "myreports",
+    description: "Check the status of your reports",
+    type: 1,
+    dm_permission: true,
+};
 const ALL_COMMANDS = [TEST_COMMAND, PRIVACY_REPORTING_COMMAND];
 
 console.log(ALL_COMMANDS);
