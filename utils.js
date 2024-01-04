@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import fetch from 'node-fetch';
 import { verifyKey } from 'discord-interactions';
+import {findReport} from './database/queries.js';
 
 export function VerifyDiscordRequest(clientKey) {
     return function (req, res, buf, encoding) {
@@ -91,17 +92,28 @@ export function capitalize(str) {
 }
 
 
-export async function fetchMessages(channelId, messageId, limit) {
-    let endpoint = `channels/${channelId}/messages`;
-    let options = { around: messageId, limit: limit };
+export async function fetchMessages(channel_id, message_id, limit) {
+    let endpoint = `channels/${channel_id}/messages`;
+    let options = { around: message_id, limit: limit };
 
     let messages = await DiscordGetRequest(endpoint, options);
 
     // clear message information from the returned JSON and map in reverse order
     messages = messages.reverse().map(message => {
+        // console.log("attachments: ", message.attachments);
         return {
-            id: message.id,
+            message_id: message.id,
             content: message.content,
+            attachments: message.attachments.map(
+                attachment => {
+                    return {
+                        url: attachment.url,
+                        filename: attachment.filename,
+                        content_type: attachment.content_type,
+                        ephemeral: attachment.ephemeral || false
+                    }
+                }
+            ),
             timestamp: message.timestamp,
             edited_timestamp: message.edited_timestamp,
             author:{
@@ -129,13 +141,30 @@ export async function fetchMessages(channelId, messageId, limit) {
   
 // }
 
-export function generateMagicLink(messageId, userId, timestamp){
-    // generate a magic link for the user to click on
-    const uniqueString = `${userId}#${timestamp}#${process.env.MAGIC_KEY}`;
+export function generateMagicToken(message_id, report_id){
+    const uniqueString = `${message_id}#${report_id}#${process.env.MAGIC_KEY}`;
     const encodedString = Buffer.from(uniqueString).toString('base64');
     // const encodedString = crypto.createHash('sha1').update(uniqueString).digest('hex');
-    const magicLink = `${process.env.BASE_URL}?token=${encodedString}`;
+    return encodedString;
 
+};
+
+export async function checkExpiredToken(report){
+    let reporting_timestamp = report.reporting_timestamp;
+    let current_timestamp = Math.floor(Date.now() / 1000);
+    let time_difference = current_timestamp - reporting_timestamp;
+    // if less than 15 minutes, then the token is still valid
+    if(time_difference < 15 * 60){
+        return false;
+    } else {
+        return true;
+    }
+
+}
+export function generateMagicLink(message_id, report_id){
+    // generate a magic link for the user to click on
+    const encodedString = generateMagicToken(message_id, report_id);
+    const magicLink = `${process.env.BASE_URL}?token=${encodedString}`;
     console.log("magic link generated:", magicLink);
     return magicLink;
 }
@@ -143,31 +172,20 @@ export function generateMagicLink(messageId, userId, timestamp){
 // functions that decode the magic link
 export function decodeMagicLink(token){
     const decodedString = Buffer.from(token, 'base64').toString('ascii');
-    const [user_id, timestamp, token2] = decodedString.split('#');
+    const [message_id, report_id, token2] = decodedString.split('#');
+    // console.log("decoded result:", message_id, report_id, token2)
     if (token2 !== process.env.MAGIC_KEY) {
         console.log("token2 does not match");
         return {
-            messageId: null,
-            userId: null,
-            timestamp: null
+            message_id: null,
+            report_id: null
         }
     } else {
         return {
-            user_id: user_id,
-            timestamp: timestamp
+            message_id: message_id,
+            report_id: report_id
         }
     }
-}
-
-
-export function findReport(token, reports){
-    const {user_id, timestamp} = decodeMagicLink(token)
-    // search for the report in the reports array to validate the existence of reports
-    let report = reports.find(report => 
-            report.reporting_user_id === user_id 
-            && report.reporting_timestamp === timestamp
-        )
-    return report
 }
 
 export async function sendMessage(content, components, userId = null, channelId = null) {
@@ -213,6 +231,8 @@ export async function sendMessage(content, components, userId = null, channelId 
 }
 
 export function deleteInteractionMessage(token, message){
+    // if the previous message is a modal input, then there is not a message to delete
+    if(!message) return;
     let messageId = message.id;
     // console.log("deleting message:", message.content);
     let endpoint = `webhooks/${process.env.APP_ID}/${token}/messages/${messageId}`;
@@ -221,4 +241,11 @@ export function deleteInteractionMessage(token, message){
     } catch (err) {
         console.error(err);
     }
+}
+
+export function convertToDateTime(timestamp){
+    const dateOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+    const formattedDate = new Date(timestamp * 1000).toLocaleString([], dateOptions);
+
+    return formattedDate;
 }

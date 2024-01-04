@@ -1,23 +1,8 @@
 import 'dotenv/config';
-import { getRPSChoices } from './game.js';
+
 import { capitalize, InstallGlobalCommands } from './utils.js';
 
-// Get the game choices from game.js
-function createCommandChoices() {
-  const choices = getRPSChoices();
-  const commandChoices = [];
 
-  for (let choice of choices) {
-    commandChoices.push({
-      name: capitalize(choice),
-      value: choice.toLowerCase(),
-    });
-  }
-
-  return commandChoices;
-}
-
-// Simple test command
 const TEST_COMMAND = {
   name: 'test',
   description: 'Basic command customized',
@@ -32,11 +17,20 @@ const PRIVACY_REPORTING_COMMAND = {
 
 const REPORTING_DASHBOARD_COMMAND = {
     name: "myreports",
-    description: "Check the status of your reports",
+    description: "Review your latest N reports",
     type: 1,
     dm_permission: true,
+    options: [{
+        type: 4, // integers,
+        name: "number",
+        description: "Number of reports to show (default 5)",
+        required: false,
+        min_value: 1,
+        max_value: 10,
+    }]
 };
-const ALL_COMMANDS = [TEST_COMMAND, PRIVACY_REPORTING_COMMAND];
+
+const ALL_COMMANDS = [TEST_COMMAND, PRIVACY_REPORTING_COMMAND, REPORTING_DASHBOARD_COMMAND];
 
 console.log(ALL_COMMANDS);
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
