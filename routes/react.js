@@ -2,7 +2,7 @@ import {
     fetchMessages,
     sendMessage,
     convertToDateTime,
-    checkExpiredToken
+    checkFrontendValidity,
 } from "../utils.js";
 import {
     MessageComponentTypes,
@@ -14,6 +14,7 @@ import {
     findReport, 
     findMessageWindow,
     findMessages,
+    findMessageWindowsByReport,
     addReportMessages,
     updateReportMessages,
     findSimilarReports,
@@ -29,16 +30,10 @@ router.get("/redact-reports", async function (req, res) {
     // parse get URL parameters
     let magic_token = req.query.token;
     let report = await findReport(magic_token);
-    if(!report) return res.status(400).json({ error: "Invalid magic token for retrieving reports" });
-
     let message_window = await findMessageWindow(magic_token);
-    if (!message_window) return res.status(400).json({ error: "Invalid magic token for redacting message windows" });
-    // the user might have already clicked the url button, so we need to check if the message window has already been redacted
-    if(message_window.is_redacted) return res.status(400).json({ error: "The message window has already been redacted" });
 
-    if(checkExpiredToken(report) === true) {
-        return res.status(400).json({ error: "The magic token has expired after 15 minutes" });
-    }
+    let error_message = checkFrontendValidity(report, message_window);
+    if(error_message !== null) return res.status(400).json({ error: error_message });
     
     // make sure we do not continuously request data from Discord API by looking releveant messages in the database
     let messages = await findMessages(message_window.id);
@@ -56,6 +51,26 @@ router.get("/redact-reports", async function (req, res) {
     // )
     return res.json(report);
     
+});
+
+// help retrieve additional messages in a window
+router.get("/expand-window", async function (req, res) {
+    let magic_token = req.query.token;
+    let message_id = req.query.message_id;
+    let direction = req.query.direction;
+    // make sure direction is either "before" or "after"
+    if(direction !== "before" && direction !== "after") return res.status(400).json({ error: "Invalid direction" });
+
+    let report = await findReport(magic_token);
+    let message_window = await findMessageWindow(magic_token);
+
+    let error_message = checkFrontendValidity(report, message_window);
+    if(error_message !== null) return res.status(400).json({ error: error_message });
+
+    let expanded_messages = await fetchMessages(message_window.channel_id, message_id, 5, direction);
+    await addReportMessages(message_window.id, expanded_messages);
+
+    return res.json({expanded_messages: expanded_messages});
 });
 
 // initiate a report DM with the user who have redacted their reports
@@ -113,13 +128,35 @@ router.post("/report-discord", async function (req, res) {
     }
 });
 
-// send moderators all reports
-// Todo: future should only send identifier information at the step; instead of sending all information
-// Todo: there should also be some authentication process to make sure that only moderators can access this information
-router.get("/review-reports", async function (req, res) {
-    console.log("review-reports");
+/* 
+    Let the reporting user review their redacted message windows of a given report
+    TODO: with the witnesses as potential reviewers
+*/
+router.get("/review-report", async function (req, res) {
+    let token = req.query.token;
+    let report = await findReport(token);
+    if(!report) return res.status(400).json({ error: "Invalid magic token" });
+
+    // return all message windows of this report
+    const message_windows = await findMessageWindowsByReport(report.id);
+    if(message_windows.length === 0) return res.status(400).json({ error: "No message windows found" });
+    return res.json({
+        reporting_user_id: report.reporting_user_id,
+        reported_user_id: report.reported_user_id,
+        reporting_timestamp: report.reporting_timestamp,
+        message_windows: message_windows
+    });
+});
+
+/* 
+    Send moderators all reports
+    Todo: future should only send identifier information at the step; instead of sending all information
+    Todo: there should also be some authentication process to make sure that only moderators can access this information
+*/
+router.get("/moderate-reports", async function (req, res) {
     console.log(req.reports);
     return res.json(req.reports.filter(report => report.reporting_status === "submitted"));
 });
+
 
 export default router;

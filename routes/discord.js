@@ -10,7 +10,7 @@ import {
 import { 
     VerifyDiscordRequest,
     getRandomEmoji, 
-    generateMagicLink,
+    generateMagicToken,
     deleteInteractionMessage,
     convertToDateTime,
     sendMessage
@@ -69,7 +69,7 @@ router.post('/interactions', async function (req, res) {
             if (!new_report_id) {
                 return res.status(400).json({ error: "Failed to create a new report" });
             } else {
-                let magic_link = generateMagicLink(message_id, new_report_id);
+                let magic_token = generateMagicToken(message_id, new_report_id);
                 
                 return res.send({
                     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -79,7 +79,7 @@ router.post('/interactions', async function (req, res) {
                             type: MessageComponentTypes.ACTION_ROW,
                             components: [{
                                 type: MessageComponentTypes.BUTTON,
-                                url: magic_link,
+                                url: `${process.env.BASE_URL}/redact?token=${magic_token}`,
                                 label: "Redact Reports",
                                 style: ButtonStyleTypes.LINK,
                             }],
@@ -123,13 +123,14 @@ router.post('/interactions', async function (req, res) {
                     reports.map(async (report, index) => {
                         let review = getReportingReview(report).join("\n");
                         let content = `### ${index + 1}. Report on ${convertToDateTime(report.reporting_timestamp)}\nstatus: **${report.reporting_status}**\n\n${review}\n`;
+                        let magic_token = generateMagicToken(report.reporting_user_id, report.id, "report");
                         let components = [{
                             type: MessageComponentTypes.ACTION_ROW,
                             components: [{
                                 type: MessageComponentTypes.BUTTON,
-                                custom_id: `review-reports.${report.id}`,
-                                label: "See Reported Messages",
-                                style: ButtonStyleTypes.PRIMARY,
+                                url: `${process.env.BASE_URL}/review?token=${magic_token}`,
+                                label: "Review Reported Messages",
+                                style: ButtonStyleTypes.LINK,
                             }],
                         }];
                         await sendMessage(content, components, user.id);

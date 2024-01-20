@@ -1,6 +1,7 @@
 import db from './database.js';
 import { decodeMagicLink, generateMagicToken} from '../utils.js';
 
+/* given a magic token, find the corresponding report */
 export async function findReport(token) {
     const { message_id, report_id } = decodeMagicLink(token);
     try {
@@ -11,7 +12,7 @@ export async function findReport(token) {
         return null;
     }
 }
-
+/* find similar reports that are still open where the same reporting person reported the same reported person */
 export async function findSimilarReports(reported_user_id, reporting_user_id){
     try {
         const reports = await db('reports')
@@ -25,6 +26,7 @@ export async function findSimilarReports(reported_user_id, reporting_user_id){
     }
 }
 
+/* merge two message windows when the user wants to attach a new message window to an existing report */
 export async function mergeReports(token, merging_report_id){
     /* 
         token represents a new report with one message window, and we want to merge this new report with an existing report.
@@ -48,6 +50,7 @@ export async function mergeReports(token, merging_report_id){
     }
 }
 
+/* find the message window given a magic token */
 export async function findMessageWindow(token){
     const { message_id, report_id } = decodeMagicLink(token);
     try {
@@ -62,6 +65,7 @@ export async function findMessageWindow(token){
 
 }
 
+/* find all messages of a message window and organize it in a way that is easy to display on the frontend */
 export async function findMessages(window_id){
     try {
         let messages = await db('messages').where({window_id: window_id});
@@ -90,6 +94,41 @@ export async function findMessages(window_id){
 
 }
 
+/* find all reports that are not just open by a given user */
+export async function findReportsByUserId(user_id, number){
+    try {
+        const reports = await db('reports')
+            .where({reporting_user_id: user_id})
+            .whereNotIn('reporting_status', ['open'])
+            .orderBy('reporting_timestamp', 'desc')
+            .limit(number);
+        return reports;
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+}
+
+/* find all message windows of a given report */
+export async function findMessageWindowsByReport(report_id){
+    // find all message windows of a given report that have been redacted
+    try {
+        const message_windows = await db('message_windows')
+            .where({report_id: report_id, is_redacted: true})
+            .orderBy('created_at', 'desc');
+        console.log("message windows: ", message_windows);
+        
+        await Promise.all(message_windows.map(async (message_window) => {
+            message_window.messages = await findMessages(message_window.id);
+        }));
+
+        return message_windows;
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+}
+/* create a new report when the user instiates a reporting process */
 export async function addReport(reported_user_id, reporting_user_id, reporting_timestamp, message_id, channel_id){
     try{
         let result = await db('reports').insert({
@@ -115,8 +154,9 @@ export async function addReport(reported_user_id, reporting_user_id, reporting_t
     }
 }
 
+/* add messages of a given message window to the database; this happens when users start to redact their reports on React*/
 export async function addReportMessages(window_id, messages) {
-        // iterate through the messages and insert them into the messages table
+    // iterate through the messages and insert them into the messages table
     messages.forEach(async (message) => {
         // console.log(message);
         try{
@@ -220,18 +260,5 @@ export async function updateReportForms(token, field_name, new_value) {
     } catch (error) {
         console.error(error);
         // Handle the error appropriately
-    }
-}
-
-export async function findReportsByUserId(user_id, number){
-    try {
-        const reports = await db('reports')
-            .where({reporting_user_id: user_id})
-            .orderBy('reporting_timestamp', 'desc')
-            .limit(number);
-        return reports;
-    } catch (error) {
-        console.error(error);
-        return [];
     }
 }

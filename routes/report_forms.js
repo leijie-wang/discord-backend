@@ -191,6 +191,7 @@ function getReportingToWhomLabel(value){
 }
 
 export function getReportingReview(report){
+    console.log(report);
     let reportToWhom = getReportingToWhomLabel(report.report_to_whom);
     let reportForWhom = report.report_for_whom.split(",").map(getReportingForWhomLabel).join(", ");
 

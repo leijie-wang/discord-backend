@@ -7,7 +7,7 @@ export function VerifyDiscordRequest(clientKey) {
     return function (req, res, buf, encoding) {
         const signature = req.get('X-Signature-Ed25519');
         const timestamp = req.get('X-Signature-Timestamp');
-        // console.log(signature, timestamp);
+        console.log(signature, timestamp);
         const isValidRequest = verifyKey(buf, signature, timestamp, clientKey);
         if (!isValidRequest) {
             res.status(401).send('Bad request signature');
@@ -92,9 +92,9 @@ export function capitalize(str) {
 }
 
 
-export async function fetchMessages(channel_id, message_id, limit) {
+export async function fetchMessages(channel_id, message_id, limit, direction="around") {
     let endpoint = `channels/${channel_id}/messages`;
-    let options = { around: message_id, limit: limit };
+    let options = { [direction]: message_id, limit: limit };
 
     let messages = await DiscordGetRequest(endpoint, options);
 
@@ -141,15 +141,15 @@ export async function fetchMessages(channel_id, message_id, limit) {
   
 // }
 
-export function generateMagicToken(message_id, report_id){
-    const uniqueString = `${message_id}#${report_id}#${process.env.MAGIC_KEY}`;
+export function generateMagicToken(id, report_id){
+    const uniqueString = `${id}#${report_id}#${process.env.MAGIC_KEY}`;
     const encodedString = Buffer.from(uniqueString).toString('base64');
     // const encodedString = crypto.createHash('sha1').update(uniqueString).digest('hex');
     return encodedString;
 
 };
 
-export async function checkExpiredToken(report){
+export function checkExpiredToken(report){
     let reporting_timestamp = report.reporting_timestamp;
     let current_timestamp = Math.floor(Date.now() / 1000);
     let time_difference = current_timestamp - reporting_timestamp;
@@ -159,30 +159,46 @@ export async function checkExpiredToken(report){
     } else {
         return true;
     }
+}
+
+export function checkFrontendValidity(report, message_window){
+    if(!report) return "Invalid magic token for retrieving reports";
+
+    if (!message_window) return "Invalid magic token for redacting message windows";
+
+    // the user might have already clicked the url button, so we need to check if the message window has already been redacted
+    if(message_window.is_redacted) return "The message window has already been redacted";
+
+    if(checkExpiredToken(report) === true) {
+        return "The magic token has expired after 15 minutes";
+    }
+
+    return null;
 
 }
-export function generateMagicLink(message_id, report_id){
-    // generate a magic link for the user to click on
-    const encodedString = generateMagicToken(message_id, report_id);
-    const magicLink = `${process.env.BASE_URL}?token=${encodedString}`;
-    console.log("magic link generated:", magicLink);
-    return magicLink;
-}
+// export function generateMagicLink(message_id, report_id){
+//     // generate a magic link for the user to click on
+//     const encodedString = generateMagicToken(message_id, report_id);
+//     const magicLink = `${process.env.BASE_URL}?token=${encodedString}`;
+//     console.log("magic link generated:", magicLink);
+//     return magicLink;
+// }
 
 // functions that decode the magic link
-export function decodeMagicLink(token){
+export function decodeMagicLink(token, type="window"){
     const decodedString = Buffer.from(token, 'base64').toString('ascii');
-    const [message_id, report_id, token2] = decodedString.split('#');
-    // console.log("decoded result:", message_id, report_id, token2)
+    const [id, report_id, token2] = decodedString.split('#');
+    
+    let id_name = type === "window" ? "message_id" : "reviewer_id";
     if (token2 !== process.env.MAGIC_KEY) {
         console.log("token2 does not match");
         return {
-            message_id: null,
+            [id_name]: null,
             report_id: null
         }
     } else {
         return {
-            message_id: message_id,
+            [id_name]: id,
             report_id: report_id
         }
     }
