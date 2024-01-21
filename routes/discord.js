@@ -1,5 +1,4 @@
 import express from 'express';
-import db from '../database/database.js';
 import {
     InteractionType,
     InteractionResponseType,
@@ -28,7 +27,6 @@ var router = express.Router();
 // Parse request body and verifies incoming requests using discord-interactions package
 router.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }));
 
-const reports = []
 
 // Interactions endpoint URL where Discord will send HTTP requests
 router.post('/interactions', async function (req, res) {
@@ -37,6 +35,7 @@ router.post('/interactions', async function (req, res) {
   
     // Handle verification requests
     if (type === InteractionType.PING) {
+        console.log("I am sending back a ping");
         return res.send({ type: InteractionResponseType.PONG });
     }
   
