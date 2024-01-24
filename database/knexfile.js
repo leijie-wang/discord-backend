@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 // when running npx knex migrate:latest, it expects the .env file to be in the same directory as the knexfile.js by default
-// so we need to specify the path to the .env file
+// so we need to specify the path to the .env fileœ
 dotenv.config({path: "../.env"});
 
 

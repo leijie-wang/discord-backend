@@ -63,7 +63,7 @@ export function getReportingForWhomMessages(token){
     return {
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-            content: "### Reporting Process 1/4. \n\nWho is this report for?",
+            content: "### Reporting Process 1/4. \n\nWho are you reporing on behalf of?",
             components: [{
                 type: MessageComponentTypes.ACTION_ROW,
                 components: [{
@@ -109,7 +109,7 @@ export function getReportingReasonMessages(token){
     return {
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-            content: "### Reporting Process 2/4.\n\nThey are being ...",
+            content: "### Reporting Process 2/4.\n\nPlease tell us why you are reporting this user",
             components: [{
                 type: MessageComponentTypes.ACTION_ROW,
                 components: [{
