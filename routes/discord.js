@@ -32,7 +32,6 @@ router.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }
 router.post('/interactions', async function (req, res) {
     // Interaction type and data
     const { type, id, data } = req.body;
-  
     // Handle verification requests
     if (type === InteractionType.PING) {
         console.log("I am sending back a ping");
@@ -164,6 +163,9 @@ router.post('/interactions', async function (req, res) {
             case "report-for-whom":
                 await updateReportForms(token, "report_for_whom", data.values.join(","));
                 break;
+            case "report-outcome":
+                await updateReportForms(token, "report_outcome", data.values.join(","));
+                break;
             case "report-reason":
                 await updateReportForms(token, "report_reason", data.values[0]);
                 break;
@@ -172,6 +174,9 @@ router.post('/interactions', async function (req, res) {
                 break;
             case "report-details":
                 await updateReportForms(token, "report_details", data.components[0].components[0].value);
+                break;
+            case "report-context":
+                await updateReportForms(token, "report_context", data.components[0].components[0].value);
                 break;
             case "submit-report":
                 await updateReportForms(token, "reporting_status", "submitted");
@@ -182,6 +187,7 @@ router.post('/interactions', async function (req, res) {
 
         // send out response in a message component
         // console.log(`from ${step} to ${next_step}`);
+        // console.log("token: " + token);
         try {
             res.send(await ReportingMessages[next_step](token));
             deleteInteractionMessage(req.body.token, req.body.message);

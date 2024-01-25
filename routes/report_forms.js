@@ -9,7 +9,7 @@ import {
     findReport,
 } from '../database/queries.js';
 
-export async function getStartReportMessage(token){
+export async function getStartReportMessage(token) {
     let report = await findReport(token);
 
     let message = [
@@ -63,7 +63,7 @@ export function getReportingForWhomMessages(token){
     return {
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-            content: "### Reporting Process 1/4. \n\nWho are you reporing on behalf of?",
+            content: "### Reporting Process 1/6. \n\nWho is this report for?",
             components: [{
                 type: MessageComponentTypes.ACTION_ROW,
                 components: [{
@@ -80,28 +80,35 @@ export function getReportingForWhomMessages(token){
 
 const ReportingReasons = [
     {
-        label: "Attacked with hate",
-        value: "Attacked with hate",
-        description: "Slurs, racial stereotypes, group harassment, unwanted violence or hateful imagery"
+        label: "Disrespectful or offensive",
+        value: "Disrespectful or offensive",
+        // description: "Slurs, racial stereotypes, group harassment, unwanted violence or hateful imagery"
     },
     {
-        label: "Harassed or intimidated with violence",
-        value: "Harassed or intimidated with violence",
-        description: "Sexual harassment, insults or name calling, posting post private info, violent threats"
+        label: "Exposing private information",
+        value: "Exposing private information",
+        // description: "Sexual harassment, insults or name calling, posting post private info, violent threats"
     },
     {
-        label: "Spammed",
-        value: "Spammed",
-        description: "Posting malicious links, fake engagement, repetitive messages"
+        label: "Harassment or abuse",
+        value: "Harassment or abuse",
+        // description: "Posting malicious links, fake engagement, repetitive messages"
     },
     {
-        label: "Shown content related to or encouraged to self-harm",
-        value: "Self harm",
+        label: "Hate speech against a protected category",
+        value: "Hate speech against a protected category",
     },
     {
-        label: "Shown sensitive or disturbing content",
-        value: "Shown sensitive or disturbing content",
-        description: "Consensual nudity and sexual acts, non-consensual nudity, graphic violence"
+        label: "Suicide or self-harm",
+        value: "Suicide or self-harm",
+    },
+    {
+        label: "Pretending to be someone",
+        value: "Pretending to be someone",
+    },
+    {
+        label: "Something else",
+        value: "Something else",
     }
 ];
 
@@ -109,7 +116,7 @@ export function getReportingReasonMessages(token){
     return {
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-            content: "### Reporting Process 2/4.\n\nPlease tell us why you are reporting this user",
+            content: "### Reporting Process 2/4.\n\nThey are being ...",
             components: [{
                 type: MessageComponentTypes.ACTION_ROW,
                 components: [{
@@ -139,7 +146,7 @@ export function getReportingToWhomMessages(token){
     return {
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-            content: "### Reporting Process 3/4.\n\nWho should this report be sent to?",
+            content: "### Reporting Process 2/6.\n\nWho should this report be sent to?",
             components: [{
                 type: MessageComponentTypes.ACTION_ROW,
                 components: [{
@@ -154,11 +161,45 @@ export function getReportingToWhomMessages(token){
     }
 }
 
+export const ReportingOutComeOptions = [
+    {  
+        label: "Account Suspension",
+        value: "Account Suspension"
+    },
+    {
+        label: "Content Removal",
+        value: "Content Removal,"
+    },
+    {
+        label: "Further Investigation",
+        value: "Further Investigation"
+    }
+];
+
+export function getReportingOutComeMessages(token){
+    return {
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+            content: "### Reporting Process 6/6.\n\nWhat outcome are you hoping for from this report?",
+            components: [{
+                type: MessageComponentTypes.ACTION_ROW,
+                components: [{
+                    type: MessageComponentTypes.STRING_SELECT,
+                    custom_id: `report-outcome.${token}`,
+                    options: ReportingOutComeOptions,
+                    max_values: 1,
+                    placeholder: "Select the outcome you hope for this report...",
+                }],
+            }],
+        },
+    }
+}
+
 export function getReportingDetailsMessages(token){
     return {
         type: InteractionResponseType.MODAL,
         data: {
-            title: "Provide more details if you want (optional)",
+            title: "### Reporting Process 4/6:\n\nProvide more details if you want (optional)",
             custom_id: `report-details.${token}`,
             components: [{
                 type: MessageComponentTypes.ACTION_ROW,
@@ -240,15 +281,39 @@ export async function getReportingReviewMessage(token){
     };
 }
 
+export function getReportingContextMessages(token){
+    return {
+        type: InteractionResponseType.MODAL,
+        data: {
+            title: "### Reporting Process 4/6:\n\nProvide more context if you want (optional)",
+            custom_id: `report-context.${token}`,
+            components: [{
+                type: MessageComponentTypes.ACTION_ROW,
+                components: [{
+                    type: MessageComponentTypes.INPUT_TEXT,
+                    custom_id: `report-context-inner.${token}`,
+                    label: "Context",
+                    style: 2, // 2 for multi-line input, and 1 for single-line input
+                    max_length: 1000, 
+                    placeholder: "Provide more context here",
+                    required : false,
+                }],
+            }],
+        },
+    };
+}
+
 // define the order of the reporting forms
-export const ReportingFormsOrder = ["merge-reports", "start-report", "report-for-whom", "report-reason", "report-to-whom", "report-details", "submit-report", "final-review"];
+export const ReportingFormsOrder = ["merge-reports", "start-report", "report-for-whom", "report-to-whom", "report-reason", "report-context", "report-details", "report-outcome", "submit-report", "final-review"];
 // define the messages for each step
 export const ReportingMessages = {
     "start-report": getStartReportMessage,
     "report-for-whom": getReportingForWhomMessages,
     "report-reason": getReportingReasonMessages,
     "report-to-whom": getReportingToWhomMessages,
+    "report-outcome": getReportingOutComeMessages,
     "report-details": getReportingDetailsMessages,
+    "report-context": getReportingContextMessages,
     "submit-report": getReportingReviewMessage,
     "final-review": getReportingCompleteMessage,
 }
