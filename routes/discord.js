@@ -73,7 +73,8 @@ router.post('/interactions', async function (req, res) {
                 return res.send({
                     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
                     data: {
-                        content: "Redact your reports using our web portal",
+                        content: "Thank you for reporting. To protect your privacy, we only collect a few messages around the one you're reporting when you click the button. Please proceed to our web portal for reporting.",
+                        flags: InteractionResponseFlags.EPHEMERAL,
                         components: [{
                             type: MessageComponentTypes.ACTION_ROW,
                             components: [{
