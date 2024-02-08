@@ -12,6 +12,8 @@ export const up = async function(knex) {
         table.string('report_to_whom').nullable();
         table.string('report_reason').nullable();
         table.text('report_details').nullable();
+        table.text('report_outcome').nullable();
+        table.text('report_context').nullable();
         table.enum('reporting_status', ['open', 'submitted', 'pending', 'closed']).nullable();
         /* open: the user starts to redact their reports but has not submitted the report
               submitted: the user has submitted the report and the report is pending review
